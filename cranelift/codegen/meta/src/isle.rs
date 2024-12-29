@@ -80,6 +80,7 @@ pub fn get_isle_compilations(
         .join("src")
         .join("isa")
         .join("pulley_shared");
+    let src_isa_power64 = codegen_crate_dir.join("src").join("isa").join("power64");
 
     // This is a set of ISLE compilation units.
     //
@@ -180,6 +181,19 @@ pub fn get_isle_compilations(
                     src_isa_pulley_shared.join("lower.isle"),
                 ],
                 untracked_inputs: vec![pulley_gen.clone(), clif_lower_isle.clone()],
+            },
+            // The Power instruction selector.
+            IsleCompilation {
+                name: "power64".to_string(),
+                output: gen_dir.join("isle_power64.rs"),
+                inputs: vec![
+                    prelude_isle.clone(),
+                    prelude_lower_isle.clone(),
+                    src_isa_power64.join("inst.isle"),
+                    // src_isa_risc_v.join("inst_vector.isle"),
+                    src_isa_power64.join("lower.isle"),
+                ],
+                untracked_inputs: vec![clif_lower_isle.clone()],
             },
         ],
     }

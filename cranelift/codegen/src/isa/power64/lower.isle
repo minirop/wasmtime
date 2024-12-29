@@ -1,0 +1,6 @@
+(decl partial lower (Inst) InstOutput)
+
+;;;; Rules for `nop` ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(rule (lower (nop))
+      (invalid_reg))

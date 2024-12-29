@@ -39,6 +39,7 @@ pub fn new() -> Result<Box<dyn ProfilingAgent>> {
             Architecture::Arm(_) => elf::EM_ARM as u32,
             Architecture::Aarch64(_) => elf::EM_AARCH64 as u32,
             Architecture::S390x => elf::EM_S390 as u32,
+            Architecture::Powerpc64 => elf::EM_PPC64 as u32,
             _ => unimplemented!("unrecognized architecture"),
         };
         *jitdump_file = Some(JitDumpFile::new(filename, e_machine)?);

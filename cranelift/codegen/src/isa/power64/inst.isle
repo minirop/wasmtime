@@ -1,0 +1,19 @@
+(type MInst
+  (enum
+    ;; A no-op of zero size.
+    (Nop0)
+    (Nop4)
+
+    (B
+      (label MachLabel))
+))
+
+(decl partial lower_branch (Inst MachLabelSlice) Unit)
+(rule (lower_branch (jump _) (single_target label))
+  (emit (MInst.B label)))
+
+(decl gen_call (SigRef ExternalName RelocDistance ValueSlice) InstOutput)
+(extern constructor gen_call gen_call)
+
+(decl gen_call_indirect (SigRef Value ValueSlice) InstOutput)
+(extern constructor gen_call_indirect gen_call_indirect)
