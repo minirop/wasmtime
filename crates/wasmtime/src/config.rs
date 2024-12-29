@@ -2069,8 +2069,7 @@ impl Config {
         let any_compiler_support = cfg!(target_arch = "x86_64")
             || cfg!(target_arch = "aarch64")
             || cfg!(target_arch = "riscv64")
-            || cfg!(target_arch = "s390x")
-            || cfg!(target_arch = "power64");
+            || cfg!(target_arch = "s390x");
         if !any_compiler_support && cfg!(feature = "pulley") {
             return target_lexicon::Triple::pulley_host();
         }

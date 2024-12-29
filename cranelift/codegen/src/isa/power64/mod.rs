@@ -160,7 +160,6 @@ impl TargetIsa for Power64Backend {
     }
 
     fn page_size_align_log2(&self) -> u8 {
-        unimplemented!();
         debug_assert_eq!(1 << 12, 0x1000);
         12
     }

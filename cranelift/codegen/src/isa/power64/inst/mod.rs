@@ -18,10 +18,10 @@ pub mod unwind;
 
 use crate::isa::power64::abi::Power64MachineDeps;
 
-pub use crate::isa::power64::lower::isle::generated_code::{
-    /*AluOPRRI, AluOPRRR, AtomicOP, CsrImmOP, CsrRegOP, FClassResult, FFlagsException, FpuOPRR,
-    FpuOPRRR, FpuOPRRRR, LoadOP, */MInst as Inst/*, StoreOP, CSR, FRM,*/
-};
+pub use crate::isa::power64::lower::isle::generated_code::/*{
+    AluOPRRI, AluOPRRR, AtomicOP, CsrImmOP, CsrRegOP, FClassResult, FFlagsException, FpuOPRR,
+    FpuOPRRR, FpuOPRRRR, LoadOP, */MInst as Inst/*, StoreOP, CSR, FRM,
+}*/;
 
 impl Inst {
     fn print_with_state(&self, state: &mut EmitState) -> String {
@@ -72,7 +72,17 @@ impl MachInst for Inst {
     }
 
     fn rc_for_type(ty: Type) -> CodegenResult<(&'static [RegClass], &'static [Type])> {
-        unimplemented!()
+        match ty {
+            I8 => Ok((&[RegClass::Int], &[I8])),
+            I16 => Ok((&[RegClass::Int], &[I16])),
+            I32 => Ok((&[RegClass::Int], &[I32])),
+            I64 => Ok((&[RegClass::Int], &[I64])),
+            F32 => Ok((&[RegClass::Float], &[F32])),
+            F64 => Ok((&[RegClass::Float], &[F64])),
+            _ => Err(CodegenError::Unsupported(format!(
+                "Unexpected SSA-value type: {ty}"
+            ))),
+        }
     }
 
     fn canonical_type_for_rc(rc: RegClass) -> Type {

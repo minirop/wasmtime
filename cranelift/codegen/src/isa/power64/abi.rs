@@ -56,7 +56,104 @@ impl ABIMachineSpec for Power64MachineDeps {
         add_ret_area_ptr: bool,
         mut args: ArgsAccumulator,
     ) -> CodegenResult<(u32, Option<usize>)> {
-        unimplemented!()
+        assert_ne!(
+            call_conv,
+            isa::CallConv::Winch,
+            "power64 does not support the 'winch' calling convention yet"
+        );
+
+        // All registers that can be used as parameters or rets.
+        // both start and end are included.
+        let (x_start, x_end, f_start, f_end) = match args_or_rets {
+            ArgsOrRets::Args => (10, 17, 10, 17),
+            ArgsOrRets::Rets => (10, 11, 10, 11),
+        };
+        let mut next_x_reg = x_start;
+        let mut next_f_reg = f_start;
+        // Stack space.
+        let mut next_stack: u32 = 0;
+
+        let ret_area_ptr = if add_ret_area_ptr {
+            assert!(ArgsOrRets::Args == args_or_rets);
+            next_x_reg += 1;
+            Some(ABIArg::reg(
+                x_reg(x_start).to_real_reg().unwrap(),
+                I64,
+                ir::ArgumentExtension::None,
+                ir::ArgumentPurpose::Normal,
+            ))
+        } else {
+            None
+        };
+
+        for param in params {
+            if let ir::ArgumentPurpose::StructArgument(_) = param.purpose {
+                panic!(
+                    "StructArgument parameters are not supported on riscv64. \
+                    Use regular pointer arguments instead."
+                );
+            }
+
+            // Find regclass(es) of the register(s) used to store a value of this type.
+            let (rcs, reg_tys) = Inst::rc_for_type(param.value_type)?;
+            let mut slots = ABIArgSlotVec::new();
+            for (rc, reg_ty) in rcs.iter().zip(reg_tys.iter()) {
+                let next_reg = if (next_x_reg <= x_end) && *rc == RegClass::Int {
+                    let x = Some(x_reg(next_x_reg));
+                    next_x_reg += 1;
+                    x
+                } else if (next_f_reg <= f_end) && *rc == RegClass::Float {
+                    let x = Some(f_reg(next_f_reg));
+                    next_f_reg += 1;
+                    x
+                } else {
+                    None
+                };
+                if let Some(reg) = next_reg {
+                    slots.push(ABIArgSlot::Reg {
+                        reg: reg.to_real_reg().unwrap(),
+                        ty: *reg_ty,
+                        extension: param.extension,
+                    });
+                } else {
+                    if args_or_rets == ArgsOrRets::Rets && !flags.enable_multi_ret_implicit_sret() {
+                        return Err(crate::CodegenError::Unsupported(
+                            "Too many return values to fit in registers. \
+                            Use a StructReturn argument instead. (#9510)"
+                                .to_owned(),
+                        ));
+                    }
+
+                    // Compute size and 16-byte stack alignment happens
+                    // separately after all args.
+                    let size = reg_ty.bits() / 8;
+                    let size = std::cmp::max(size, 8);
+                    // Align.
+                    debug_assert!(size.is_power_of_two());
+                    next_stack = align_to(next_stack, size);
+                    slots.push(ABIArgSlot::Stack {
+                        offset: next_stack as i64,
+                        ty: *reg_ty,
+                        extension: param.extension,
+                    });
+                    next_stack += size;
+                }
+            }
+            args.push(ABIArg::Slots {
+                slots,
+                purpose: param.purpose,
+            });
+        }
+        let pos = if let Some(ret_area_ptr) = ret_area_ptr {
+            args.push_non_formal(ret_area_ptr);
+            Some(args.args().len() - 1)
+        } else {
+            None
+        };
+
+        next_stack = align_to(next_stack, Self::stack_align(call_conv));
+
+        Ok((next_stack, pos))
     }
 
     fn gen_load_stack(mem: StackAMode, into_reg: Writable<Reg>, ty: Type) -> Inst {
@@ -229,7 +326,7 @@ impl ABIMachineSpec for Power64MachineDeps {
     }
 
     fn get_stacklimit_reg(_call_conv: isa::CallConv) -> Reg {
-        unimplemented!()
+        spilltmp_reg()
     }
 }
 
